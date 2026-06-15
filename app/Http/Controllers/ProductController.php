@@ -32,16 +32,13 @@ class ProductController extends Controller
      */
     public function store(Request $request)
     {
-        dd($request->all());
         $validator = Validator::make($request->all(), [
             'name' => 'required',
             'sku' => 'required|unique:products,sku',
             'price' => 'required|numeric',
             'status' => 'required',
-            // 'image' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
+            'image' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
         ]);
-
-        dd();
 
         if ($validator->fails()) {
             return redirect(route('products.create'))
@@ -49,27 +46,20 @@ class ProductController extends Controller
                 ->withInput();
         }
 
-        dd();
-
         $product = new Product;
         $product->name = $request->name;
         $product->sku = $request->sku;
         $product->price = $request->price;
         $product->status = $request->status;
-        $product->save();
 
         if ($request->hasFile('image')) {
-            $image = $request->image;
-            $imageName = time().'_'.$image->getClientOriginalName();
-            $path = $request->file('image')->store('products', 'public');
-            $product->image = $path;
-            $product->save();
-
+            $product->image = $this->uploadProductImage($request);
         }
+
+        $product->save();
 
         return redirect()->route('products.index')
             ->with('success', 'Product created successfully');
-
     }
 
     /**
@@ -103,35 +93,20 @@ class ProductController extends Controller
             'image' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
         ]);
 
-        // dd();
-        
         if ($validator->fails()) {
             return redirect()->back()
                 ->withErrors($validator)
                 ->withInput();
         }
 
-        // update fields
         $product->name = $request->name;
         $product->sku = $request->sku;
         $product->price = $request->price;
         $product->status = $request->status;
 
-        // image update
         if ($request->hasFile('image')) {
-
-            // delete old image
-            if (! empty($oldImage) && File::exists(public_path('uploads/products/'.$oldImage))) {
-                File::delete(public_path('uploads/products/'.$oldImage));
-            }
-
-            // upload new image
-            $image = $request->file('image');
-            $imageName = time().'_'.$image->getClientOriginalName();
-
-            $image->move(public_path('uploads/products'), $imageName);
-
-            $product->image = $imageName;
+            $this->deleteProductImage($oldImage);
+            $product->image = $this->uploadProductImage($request);
         }
 
         $product->save();
@@ -143,10 +118,33 @@ class ProductController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    
     public function destroy(Product $product)
-{
-    $product->delete();
-    return redirect()->route('products.index')->with('success', 'Product deleted successfully');
-}
+    {
+        $this->deleteProductImage($product->image);
+        $product->delete();
+
+        return redirect()->route('products.index')->with('success', 'Product deleted successfully');
+    }
+
+    private function uploadProductImage(Request $request): string
+    {
+        $uploadPath = public_path('uploads/products');
+
+        if (! File::exists($uploadPath)) {
+            File::makeDirectory($uploadPath, 0755, true);
+        }
+
+        $image = $request->file('image');
+        $imageName = time().'_'.$image->getClientOriginalName();
+        $image->move($uploadPath, $imageName);
+
+        return $imageName;
+    }
+
+    private function deleteProductImage(?string $imageName): void
+    {
+        if (! empty($imageName) && File::exists(public_path('uploads/products/'.$imageName))) {
+            File::delete(public_path('uploads/products/'.$imageName));
+        }
+    }
 }

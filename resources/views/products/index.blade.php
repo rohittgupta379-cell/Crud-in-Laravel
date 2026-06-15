@@ -80,16 +80,14 @@
 
                                     <td>{{ $product->sku }}</td>
 
+                                    <td>{{ $product->price }}</td>
+
                                     <td>
                                         @if ($product->status == 'Active')
                                             <span class="badge bg-success">Active</span>
                                         @else
                                             <span class="badge bg-danger">Inactive</span>
                                         @endif
-                                    </td>
-
-                                    <td>
-                                        Avtive
                                     </td>
 
                                     <td>
